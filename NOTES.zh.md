@@ -157,8 +157,23 @@ cd <工作区>
 npm login                     # 浏览器打开授权页；或 npm adduser
 npm whoami                    # 应打印你的用户名
 npm view dsh-plugin-sidebar-balance version   # 首次发布前应为 E404
-npm publish                   # 开了 2FA 会提示输入一次性验证码
+npm publish --otp=<6 位验证码>  # 本机实测：不加 --otp 会被 403 拒绝，见下
 ```
+
+**实测踩到的坑（2026-10 本机）**：`npm login` 成功、`npm whoami` 正常，但直接 `npm publish` 被拒：
+
+```
+npm error code E403
+npm error 403 Forbidden - PUT https://registry.npmjs.org/<包名>
+npm error Two-factor authentication or granular access token with bypass 2fa enabled is required to publish packages.
+```
+
+这不是包的问题，而是 npm 现在的**发布时强制 2FA**策略：`npm login` 走网页授权拿到的是「可绕过 2FA」的会话，而这类凭据**不允许直接发布**（登录时 npm 自己也会打印一句 *npm tokens that bypass 2FA are being restricted for account changes and direct publishing*）。两条出路：
+
+1. **带一次性验证码发布**（最省事）：`npm publish --otp=123456`，验证码来自你账号上绑定的认证器 / 通行密钥。命令行下 `npm publish` 有时不会自动弹提示，显式给 `--otp` 最稳；验证码 30 秒一换，过期就重新取一个。
+2. **建一个仍被允许发布的令牌**：npm 网站 → Access Tokens → 新建 **Granular Access Token**，勾选 **Bypass 2FA**（该勾选本身也需要一次 OTP 才能完成创建），写进 `~/.npmrc` 的 `//registry.npmjs.org/:_authToken=...` 后再 `npm publish`。但 GitHub 已在 2026-07-31 收紧 bypass-2FA 令牌的直发权限，网页上若没有该选项就说明你的账号只能走第 1 条。
+
+认证方式与开关见 npm 官方文档：[Requiring 2FA for package publishing and settings modification](https://docs.npmjs.com/requiring-2fa-for-package-publishing-and-settings-modification/)、[Creating and viewing access tokens](https://docs.npmjs.com/creating-and-viewing-access-tokens/)，以及收紧公告 [Restricting npm bypass-2FA granular access tokens](https://github.blog/changelog/2026-07-31-restricting-npm-bypass-2fa-granular-access-tokens/)。
 
 发布后：
 
