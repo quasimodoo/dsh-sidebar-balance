@@ -200,7 +200,9 @@ dsh plugin --profile <名字> add dsh-plugin-sidebar-balance   # 换个 profile 
 注意：
 
 - **首次发布即认领名字**，之后只有你的账号能发同名包；
-- 发错了：72 小时内可 `npm unpublish dsh-plugin-sidebar-balance@1.0.0`，超时后只能发补丁版本并 `npm deprecate` 旧版本；
+- 发错了：72 小时内可 `npm unpublish <包名>@<版本>`，超时后只能发补丁版本并 `npm deprecate` 旧版本；
+- **但 unpublish 需要另一类凭据**：实测用发布用的 bypass-2FA granular token 执行 `npm unpublish` 会被拒（`Granular access tokens that bypass two-factor authentication may not perform this action`）——npm 把删除已发布版本归为账户级破坏性操作。可行做法是另开一个终端用 `npm login --auth-type=legacy`（会提示 `Enter OTP:`，需要账号已绑定认证器）后执行；该次登录会往 `~/.npmrc` 写入另一个同名 `_authToken` 键，**会覆盖 granular token**，删完记得换回来；
+- **`npm login --auth-type=legacy` 一定会要 OTP**，即使你认为账号没开 2FA——npm 对 CLI 密码登录本身强制 2FA。想确认账号状态就跑 `npm profile get`，看 `two-factor auth` 一栏；
 - 以后每次发版：`package.json` 提版本 → 更新 `CHANGELOG.md` → `npm publish` → 打 `v<版本>` 标签推送；
 - `npm pack --dry-run` 是发布前的最后一道校验，确认文件清单没有意外增删；
 - 版本号只覆盖本包：DSH 升级后即使本包一行没改也需要发新版本，`CHANGELOG.md` 里逐版本记录验证过的 DSH 构建。
