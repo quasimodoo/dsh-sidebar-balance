@@ -92,7 +92,9 @@ window.__ModuleLoader__.load({ id: '<包名>', factory(require) { ... } });
 - profile：`<用户目录>\.dsh\profiles\desktop`
 - 安装 = `dependencies` 里加 `link:<绝对路径>` + `dsh.profile.bundles` 里加包名
 - App 内**侧边栏 →「插件」→「添加插件」**接受「包名 / Git 地址 / 压缩包 / 本地绝对路径」，是官方且事务性的安装入口
-- **客户端模块表在页面加载时组装进 `window.__DSH_BOOT__`**，模块由 node 半侧通过 `/plugins/<id>/client.js` 提供；而 `client-hmr` 那条链在没有 `pnpm run dev:web` 时**空转**。所以新装或改动客户端插件后，**必须刷新页面**（Ctrl+R）。
+- **客户端模块表在页面加载时组装进 `window.__DSH_BOOT__`**，模块由 node 半侧按 `/plugins/<包名>/<文件名>` 路由提供（`dsh-client-modules` 注册的前缀路由，按插件 id 找文件）；而 `client-hmr` 那条链在没有 `pnpm run dev:web` 时**空转**。所以新装或改动客户端插件后，**必须刷新页面**（Ctrl+R）。
+- 路由的可核对细节：`/plugins/<id>/<fileName>` 里 `id` 就是包名（可与 `?rev=` 组合），另有一条组合路由 `/plugins/??<ids>&rev=...`。用命令行直接 curl 这两个地址会得到 404（本机实测 `http://127.0.0.1:19387/` 未带凭据时返回 401），所以**验证要走应用界面或在页面里看 Network/控制台**，不要用命令行探测下结论。
+- **改了包名之后必须重启 App，而不只是刷新页面**：Host 侧的加载器行与模块表都是启动时组装的，只刷新页面拿到的仍是旧包名那一行（本机实测：改名后 `/plugins/<新旧包名>/client.js` 都返回 404，直到重启）。
 - 警告：profile 的 `package.json` 里 `link:` 路径**不要含非 ASCII 字符**（如 `×`、中文目录名）。实测带这类字符的目录能正确写入 UTF-8，但这条路径经历过一次被误判为乱码的排查，改用纯 ASCII 路径（例如统一放在 `C:\Users\<用户名>\project\` 下）更省事。
 
 ## 刷新策略
