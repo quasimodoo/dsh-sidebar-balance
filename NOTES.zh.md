@@ -118,24 +118,33 @@ window.__ModuleLoader__.load({ id: '<包名>', factory(require) { ... } });
 依据官方 [打包与安装插件](https://github.com/deepseek-ai/DeepSeek-Harness/blob/master/docs/user/develop/basic/publish.zh.md?plain=1)：
 
 - [x] 包名改为可发布的 `dsh-sidebar-balance`（`@local/*` 不可发布）
-- [x] 加 `files` 字段（`index.js`、`client.js`、`cordis.patch.yml`、`locale/*.json`、两个 README、`NOTES.zh.md`、`LICENSE`）
+- [x] 加 `files` 字段（`index.js`、`client.js`、`icon.svg`、`cordis.patch.yml`、`locale/*.json`、两个 README、`NOTES.zh.md`、`LICENSE`）
 - [x] 加 `LICENSE`（MIT）
 - [x] 加 `README.md` / `README.zh.md`（含风险声明与适配版本）
 - [x] 加 `repository` 字段（`url` 指向实际远端 `github.com/quasimodoo/dsh-sidebar-balance`；包已在仓库根，无需 `directory`）
 - [x] 加 `locale/zh.json`、`locale/en.json` 的 `meta.title` / `meta.description`
 - [x] 加 `exports` 的 `./package.json` 与 `./locale/*.json`（展示元信息读取走 Node exports，缺了就读不到卡片标题）
 - [x] `CLIENT_VERSION` 改为「运行时优先、常量兜底」
-- [ ] 可选 `icon.svg`：`package.json` 顶层加 `"icon": "./icon.svg"`，并把该文件加进 `files`；缺省时管理器用默认插画
-- [ ] npm 发布前：`name` 若被占用需改名，`repository.url` 换成实际远端
+- [x] `icon.svg`：`package.json` 顶层写 `"icon": "./icon.svg"` 并加进 `files`；36×36 viewBox、复用内置组合包的青蓝渐变（`#58BCC8`→`#658EFF`→`#4A65E8`）。缺省时管理器用默认插画
+- [ ] npm 发布前：**`dsh-sidebar-balance` 这个名字已被占用**（见下），需改名；`repository.url` 已是实际远端，无需再换
+
+### npm 名字冲突（实测）
+
+`registry.npmjs.org/dsh-sidebar-balance` 返回 200：已有 `0.1.0` / `0.1.1` 两个版本，属主 `zck2046`，是另一个 DSH 余额插件（`github.com/zhouchengke2046/dsh-sidebar-balance`；它挂在 `settings.trigger` 槽、另带 OpenCode Go 用量）。本包名与其**完全相同**，因此：
+
+- 本包**不能**发布到 npm 的这个名字；用户执行 `dsh plugin add dsh-sidebar-balance` 装到的是**别人的**插件，不是本包。
+- 装机路径不受影响：GitHub、tarball、本地路径安装都不查注册表。
+- 生态里走 npm 的插件多用 `dsh-plugin-*` 前缀（`dsh-plugin-highlight`、`dsh-plugin-whale-pet`、`dsh-plugin-skeleton`）；`dsh-plugin-sidebar-balance` 实测 404，可用。
+- 改名要同步四处：`package.json` 的 `name`、`client.js` 里 `window.__ModuleLoader__.load({ id })`（**必须等于包名**）、`cordis.patch.yml` 的 `name:`，以及 profile 的依赖键与 `dsh.profile.bundles` 条目；改完刷新页面。
 
 包在仓库根，`pnpm pack` 打进去的就是根目录这一份（`README.md` / `README.zh.md` / `NOTES.zh.md` 都在 `files` 里）。
 
 ## 后续待办
 
 1. ~~迁移源码到新工作区~~ 已完成：包直接在仓库根。
-2. ~~修正 profile 的 `link:` 指向~~ 已完成：把 profile 的 `package.json` 改成 `"dsh-sidebar-balance": "link:<工作区绝对路径>"`（Windows 写法如 `link:C:/Users/<用户名>/project/dsh-sidebar-balance`），`dsh.profile.bundles` 同步改名，并在 profile 目录内重跑 `pnpm install` 建立新链接、删掉失效的 `node_modules/@local` 链接；改动前备份 profile 的 `package.json` 与 `pnpm-lock.yaml`。**改完要刷新页面**才会加载新的客户端模块。
+2. **本机 profile 目前仍指向冻结的 tarball**（与上一条的理想状态不一致）：`<用户目录>\.dsh\profiles\desktop\package.json` 的依赖写成 `file:C:/File/project/dstools/dsh-sidebar-balance-1.0.0.tgz`，装进来的是一份 pnpm store 硬链接副本——**在本工作区改代码不会生效**，必须重新打包 + 重装（或改回 `link:<工作区绝对路径>` 并重跑 `pnpm install`）再刷新页面。理想状态同下：把 profile 的 `package.json` 改成 `"dsh-sidebar-balance": "link:<工作区绝对路径>"`（Windows 写法如 `link:C:/Users/<用户名>/project/dsh-sidebar-balance`），`dsh.profile.bundles` 同步，改动前备份 profile 的 `package.json` 与 `pnpm-lock.yaml`。
 3. **包必须留在仓库根**：`dsh plugin add github:<用户>/<仓库>` 把**仓库根**当成依赖安装。早期把包放在 `packages/dsh-sidebar-balance/` 时实测会得到一条警告——`declares no dsh.bundle — installed as a plain dependency, not a profile layer`——即根目录没有清单、插件永远不会激活。单包仓库摊平到根是唯一可靠的布局；多包仓库要走 npm 或 tarball 分发。
-4. ~~完成上面的发布清单~~ 见上一节，只剩可选的 `icon.svg` 与发布时的仓库地址替换。
+4. ~~完成上面的发布清单~~ 只剩命名问题（npm 名字被占用，见上一节）需要决定：改名到 `dsh-plugin-*`，或继续只走 GitHub / tarball 分发。
 5. `git init` + 首次提交已完成并推到 `github.com/quasimodoo/dsh-sidebar-balance`；后续 `gh` CLI 未安装，远端操作需在网页或用本机 git 完成。
 6. **旧的插件目录已不再被任何地方引用**，可以整目录删除；如果迁移时把源码复制（而不是移动）到了新工作区，旧副本会连同原目录的权限一起被带过来，可能删不掉——那种情况下用管理员权限删除，或把会话切到完全权限后再处理。同理，**工作区根上的 `Everyone: Deny DeleteSubdirectoriesAndFiles` 会继承给子目录**，标准权限修复脚本按设计只补允许项、不动拒绝项。
 

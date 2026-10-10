@@ -16,6 +16,7 @@
   },
   "type": "module",
   "main": "index.js",
+  "icon": "./icon.svg",
   "exports": {
     ".": "./index.js",
     "./client": "./client.js",
@@ -25,6 +26,7 @@
   "files": [
     "index.js",
     "client.js",
+    "icon.svg",
     "cordis.patch.yml",
     "locale/*.json",
     "README.md",
