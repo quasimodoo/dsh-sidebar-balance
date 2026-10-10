@@ -140,27 +140,30 @@ window.__ModuleLoader__.load({ id: '<包名>', factory(require) { ... } });
 - **仓库名仍是 `dsh-sidebar-balance`**（`repository.url`、两个 README 的 Releases 链接都指向它），包名与仓库名不一致是刻意的：改仓库名会打断已有链接，且 `github:<用户>/<仓库>` 安装用的是仓库名。
 - 装机路径不受注册表影响：GitHub、tarball、本地路径安装都不查注册表。
 
-包在仓库根，`pnpm pack` 打进去的就是根目录这一份（`README.md` / `README.zh.md` / `NOTES.zh.md` / `CHANGELOG.md` 都在 `files` 里）。
+包在仓库根，`pnpm pack` 打进去的就是根目录这一份（`README.md` / `README.zh-CN.md` / `NOTES.zh.md` / `CHANGELOG.md` 都在 `files` 里）。
+
+**npm 页面用哪份 README 由文件名排序决定**：注册表取清单里排在最前的那一个。原来中文版叫 `README.zh.md`（排在 `README.md` 之前），于是 **npm 页面长期显示中文**给所有人——包括英文用户；1.0.1 起中文版改名 `README.zh-CN.md`，`README.md` 才是页面。**改文件名的修正无法在已发布的版本上生效**（版本内容不可变），必须发新版本。
 
 ### npm 发布操作手册（本机实测）
 
 包名在 npm 上**未被占用**：`npm view dsh-plugin-sidebar-balance` 返回 `E404`（真实请求，说明注册表可达且该名字自由）。发布前状态：
 
 - `npm whoami` 返回 `ENEEDAUTH` —— 本机还没登录过 npm，`~/.npmrc` 不存在；
-- 打包内容实测 12 个文件：`CHANGELOG.md`、`client.js`、`cordis.patch.yml`、`icon.svg`、`index.js`、`LICENSE`、`locale/{en,zh}.json`、`NOTES.zh.md`、`package.json`、`README.md`、`README.zh.md`；
+- 打包内容实测 12 个文件：`CHANGELOG.md`、`client.js`、`cordis.patch.yml`、`icon.svg`、`index.js`、`LICENSE`、`locale/{en,zh}.json`、`NOTES.zh.md`、`package.json`、`README.md`、`README.zh-CN.md`（1.0.0 时该文件还叫 `README.zh.md`）；
 - `package.json` 已带 `publishConfig`（`access: public`、`registry: https://registry.npmjs.org/`）与 `engines.node >= 18`，无需额外开关。
 
-发布步骤（在自己终端里跑，DSH 会话内做不了交互式登录）：
+发布步骤（本机实测走通的顺序）：
 
 ```sh
 cd <工作区>
-npm login                     # 浏览器打开授权页；或 npm adduser
-npm whoami                    # 应打印你的用户名
-npm view dsh-plugin-sidebar-balance version   # 首次发布前应为 E404
-npm publish --otp=<6 位验证码>  # 本机实测：不加 --otp 会被 403 拒绝，见下
+npm view dsh-plugin-sidebar-balance version   # 首次发布前应为 E404（本机确认过）
+# 把 granular token 写进 ~/.npmrc 的那一行（见下），然后在 DSH 会话里就能发：
+npm whoami                                    # 本机打印 swordd
+npm publish                                   # 本机 1.0.0 / 1.0.1 都用这条发成功
+npm view dsh-plugin-sidebar-balance dist-tags versions time --json   # 发布后核对
 ```
 
-**实测踩到的坑（2026-10 本机）**：`npm login` 成功、`npm whoami` 正常，但直接 `npm publish` 被拒：
+**实测踩到的坑（2026-10 本机）**：先用 `npm login`（网页授权）登录，`npm whoami` 正常，但 `npm publish` 被拒：
 
 ```
 npm error code E403
@@ -168,10 +171,21 @@ npm error 403 Forbidden - PUT https://registry.npmjs.org/<包名>
 npm error Two-factor authentication or granular access token with bypass 2fa enabled is required to publish packages.
 ```
 
-这不是包的问题，而是 npm 现在的**发布时强制 2FA**策略：`npm login` 走网页授权拿到的是「可绕过 2FA」的会话，而这类凭据**不允许直接发布**（登录时 npm 自己也会打印一句 *npm tokens that bypass 2FA are being restricted for account changes and direct publishing*）。两条出路：
+这不是包的问题，而是 npm 现在的**发布时强制 2FA**策略：`npm login` 走网页授权拿到的是「可绕过 2FA」的会话令牌，而这类令牌**不允许直接发布**（登录时 npm 自己也会打印一句 *npm tokens that bypass 2FA are being restricted for account changes and direct publishing*）。
 
-1. **带一次性验证码发布**（最省事）：`npm publish --otp=123456`，验证码来自你账号上绑定的认证器 / 通行密钥。命令行下 `npm publish` 有时不会自动弹提示，显式给 `--otp` 最稳；验证码 30 秒一换，过期就重新取一个。
-2. **建一个仍被允许发布的令牌**：npm 网站 → Access Tokens → 新建 **Granular Access Token**，勾选 **Bypass 2FA**（该勾选本身也需要一次 OTP 才能完成创建），写进 `~/.npmrc` 的 `//registry.npmjs.org/:_authToken=...` 后再 `npm publish`。但 GitHub 已在 2026-07-31 收紧 bypass-2FA 令牌的直发权限，网页上若没有该选项就说明你的账号只能走第 1 条。
+**注意：只加 `--otp=<验证码>` 并不能解决**——实测加了 `--otp` 后报错与不加完全一字不差，说明网页登录写入的 `~/.npmrc` 令牌与 `--otp` 这条路不兼容（令牌类型先被否掉，验证码根本用不上）。两条真正可行：
+
+1. **换成自己生成的 granular access token（本机最终采用，实测可用）**：npm 网站 → Access Tokens → Generate New Token → **Granular Access Token**，勾 **Bypass two-factor authentication (2FA)**，权限 **Read and write (publish and stage)**，packages 选 **All packages** 或只勾本包；**Organizations 权限要选 No access**，否则因为「给了组织权限却没选组织」被表单拦住。生成后用新令牌**替换** `~/.npmrc` 里的 `_authToken` 行（`npm login` 留下的那条要删掉，只留一条）。
+2. **改用经典登录**，让 npm 在发布时主动索要验证码：删掉 `~/.npmrc` 的 `_authToken` 后 `npm login --auth-type=legacy`，再 `npm publish`。
+
+**时间线（趁早规划）**：Bypass-2FA 令牌的**直发**能力会在 **2027 年 1 月**被移除（npm 生成页上的黄条原文：*The ability to publish new versions directly with a granular access token will be removed in January 2027*，并建议改用 *Read and write (stage only)* + 发布时补一次 OTP，或改用 Trusted Publishing）。也就是说上面第 1 条只能用到 2027-01；到期后改用 Trusted Publishing，或 stage-only 令牌 + `npm stage publish` 后再走完发布。
+
+### 发布后的实测情况（1.0.0 / 1.0.1）
+
+- 注册表核对：`dist-tags.latest = 1.0.0`，`versions = ["0.0.0-stage", "1.0.0"]`，`dist.shasum`/`dist.integrity` 与 `npm publish` 输出一致，`maintainers = swordd`；
+- 端到端验收：在临时目录 `pnpm add dsh-plugin-sidebar-balance`，装到的是 `1.0.0`，11 个预期文件齐全，`client.js` 的 Loader id、`cordis.patch.yml` 的行名、`icon` 与 `dsh.bundle` 都正确——**按包名安装这条路是通的**；
+- **包里多出一个 `0.0.0-stage`**：这是 npm 的 *staged publishing* 占位版本（描述为 `Temporary package placeholder for staged publishing`，2 个文件 348 字节，创建时间比 1.0.0 早 34 秒，应该是网页上误触了 *Staged Packages* 流程）。它排在 `latest` 之外、不影响 `dsh plugin add`，但会让注册表上出现一个无意义的版本号；72 小时内可 `npm unpublish dsh-plugin-sidebar-balance@0.0.0-stage` 清掉。
+- **页面 README 由文件名排序决定**，见上一节；`README.zh.md` → `README.zh-CN.md` 这个修正只能靠发新版本体现。
 
 认证方式与开关见 npm 官方文档：[Requiring 2FA for package publishing and settings modification](https://docs.npmjs.com/requiring-2fa-for-package-publishing-and-settings-modification/)、[Creating and viewing access tokens](https://docs.npmjs.com/creating-and-viewing-access-tokens/)，以及收紧公告 [Restricting npm bypass-2FA granular access tokens](https://github.blog/changelog/2026-07-31-restricting-npm-bypass-2fa-granular-access-tokens/)。
 

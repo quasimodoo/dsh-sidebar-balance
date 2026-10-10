@@ -116,8 +116,12 @@ Tarball 安装可能报 `EPERM: operation not permitted, rename .../node_modules
 ├── icon.svg            # 插件管理器卡片图标
 ├── NOTES.zh.md         # 实证内幕与已知风险
 ├── CHANGELOG.md        # 已发布版本，以及各版本验证过的 DSH 构建
-└── README.md / README.zh.md
+├── README.zh-CN.md     # 本文档
+└── LICENSE
 ```
+
+`README.md` 是 npm 包页面用的那一份：npm 会挑该清单里排在最前的 README，所以中文版命名为
+`README.zh-CN.md`——叫 `README.zh.md` 时注册表把中文页面显示给了所有人（包括英文用户）。
 
 包刻意放在仓库根：`dsh plugin add github:<用户>/<仓库>` 装的是**仓库根**这个依赖，如果把包嵌在
 `packages/` 子目录里，装到的会是一个没有清单的目录，插件永远不会激活。

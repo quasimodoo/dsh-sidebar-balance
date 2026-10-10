@@ -1,6 +1,6 @@
 # dsh-plugin-sidebar-balance
 
-English | [中文](README.zh.md)
+English | [中文](README.zh-CN.md)
 
 A [DeepSeek Harness](https://github.com/deepseek-ai/DeepSeek-Harness) plugin: shows the signed-in DeepSeek account balance in the left sidebar footer, directly above the account entry.
 
@@ -116,8 +116,11 @@ Every poll is a real request: browser → local Host → DeepSeek Platform `get_
 ├── icon.svg            # Plugin Manager card artwork
 ├── NOTES.zh.md         # verified internals and known risks
 ├── CHANGELOG.md        # released versions and the DSH build each was verified against
-└── README.md / README.zh.md
+├── README.zh-CN.md     # Chinese documentation
+└── LICENSE
 ```
+
+This file is the npm package page. npm shows the first README it finds in that listing order, so the Chinese translation is named `README.zh-CN.md`: with `README.zh.md` the registry displayed the Chinese page to every visitor, English speakers included.
 
 The package sits at the repository root on purpose: `dsh plugin add github:<user>/<repo>` installs the
 repository root as the dependency, so a nested `packages/` layout would install a manifest-less directory and

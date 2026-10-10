@@ -9,6 +9,17 @@ internal extension points, so a DSH upgrade can require a new release with no
 change on the user's side. The DSH build each release was verified against is
 recorded per entry.
 
+## [1.0.1] - 2026-10-10
+
+Documentation and packaging fix; no behavior change on the DSH side.
+
+### Fixed
+
+- The npm package page showed the Chinese documentation to every visitor. The
+  registry picks the first README in the file listing, so `README.zh.md` (which
+  sorts before `README.md`) won; the Chinese file is now `README.zh-CN.md` and
+  the English `README.md` is the page. GitHub links were updated accordingly.
+
 ## [1.0.0] - 2026-10-10
 
 First published release. Verified against DSH `0.2.0-rc.2` (build
