@@ -9,6 +9,30 @@ internal extension points, so a DSH upgrade can require a new release with no
 change on the user's side. The DSH build each release was verified against is
 recorded per entry.
 
+## [1.1.0] - 2026-10-10
+
+Documentation release; the plugin code is unchanged from 1.0.0.
+
+### Changed
+
+- **The default README is now Chinese.** `README.md` is the Chinese documentation
+  and serves as both the GitHub landing page and the npm package page; the
+  English translation moved to `README.en.md`, which had to sort after
+  `README.md` because npm picks the first README in the file listing.
+- The install section now leads with the in-app path — **侧边栏 →「插件」→
+  「添加插件」**, then the package name — which was verified end to end on
+  another machine and another account, with no command line involved.
+
+### Added
+
+- A **"How the balance is read and how often it refreshes"** section in both
+  languages: the full request path (sidebar component → `remote.account.getBalance`
+  → the app's Remote gateway → Platform `get_user_summary`), the request identity
+  fields, the reason the plugin never touches a token or builds an HTTP request,
+  the currency and formatting rules, the three refresh triggers with their
+  throttling, the failure behaviour, the absence of any local cache, and the two
+  constants (`REFRESH_MS`, `MIN_GAP_MS`) that change the cadence.
+
 ## [1.0.1] - 2026-10-10
 
 Documentation and packaging fix; no behavior change on the DSH side.

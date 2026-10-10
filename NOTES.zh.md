@@ -122,7 +122,7 @@ window.__ModuleLoader__.load({ id: '<包名>', factory(require) { ... } });
 - [x] 包名改为可发布的 `dsh-plugin-sidebar-balance`（`@local/*` 不可发布；原名被 npm 占用，见下）
 - [x] 加 `files` 字段（`index.js`、`client.js`、`cordis.patch.yml`、`icon.svg`、`locale/*.json`、两个 README、`NOTES.zh.md`、`LICENSE`）
 - [x] 加 `LICENSE`（MIT）
-- [x] 加 `README.md` / `README.zh.md`（含风险声明与适配版本）
+- [x] 加 `README.md` / `README.en.md`（含风险声明与适配版本；中文为默认，英文排在后面）
 - [x] 加 `repository` 字段（`url` 指向实际远端 `github.com/quasimodoo/dsh-sidebar-balance`；包已在仓库根，无需 `directory`）
 - [x] 加 `locale/zh.json`、`locale/en.json` 的 `meta.title` / `meta.description`
 - [x] 加 `exports` 的 `./package.json` 与 `./locale/*.json`（展示元信息读取走 Node exports，缺了就读不到卡片标题）
@@ -140,16 +140,21 @@ window.__ModuleLoader__.load({ id: '<包名>', factory(require) { ... } });
 - **仓库名仍是 `dsh-sidebar-balance`**（`repository.url`、两个 README 的 Releases 链接都指向它），包名与仓库名不一致是刻意的：改仓库名会打断已有链接，且 `github:<用户>/<仓库>` 安装用的是仓库名。
 - 装机路径不受注册表影响：GitHub、tarball、本地路径安装都不查注册表。
 
-包在仓库根，`pnpm pack` 打进去的就是根目录这一份（`README.md` / `README.zh-CN.md` / `NOTES.zh.md` / `CHANGELOG.md` 都在 `files` 里）。
+包在仓库根，`pnpm pack` 打进去的就是根目录这一份（`README.md` / `README.en.md` / `NOTES.zh.md` / `CHANGELOG.md` 都在 `files` 里）。
 
-**npm 页面用哪份 README 由文件名排序决定**：注册表取清单里排在最前的那一个。原来中文版叫 `README.zh.md`（排在 `README.md` 之前），于是 **npm 页面长期显示中文**给所有人——包括英文用户；1.0.1 起中文版改名 `README.zh-CN.md`，`README.md` 才是页面。**改文件名的修正无法在已发布的版本上生效**（版本内容不可变），必须发新版本。
+**npm 页面用哪份 README 由文件名排序决定**：注册表取清单里排在最前的那一个。这条规则踩过两次：
+
+1. 最初中文版叫 `README.zh.md`，排在 `README.md` 之前，于是 npm 页面把中文显示给了所有人（含英文用户）——1.0.1 把中文版改名 `README.zh-CN.md`，让 `README.md`（当时的英文版）当页面；
+2. 1.1.0 起**中文成为默认文档**（按项目要求），于是结构改成 `README.md` = 中文（同时是 GitHub 默认说明与 npm 页面）、`README.en.md` = 英文——`README.en.md` 排在 `README.md` 之后，npm 才会选中中文那份。
+
+**改 README 结构无法在已发布的版本上生效**（版本内容不可变），必须发新版本，所以每次调整都对应一次版本号提升。
 
 ### npm 发布操作手册（本机实测）
 
 包名在 npm 上**未被占用**：`npm view dsh-plugin-sidebar-balance` 返回 `E404`（真实请求，说明注册表可达且该名字自由）。发布前状态：
 
 - `npm whoami` 返回 `ENEEDAUTH` —— 本机还没登录过 npm，`~/.npmrc` 不存在；
-- 打包内容实测 12 个文件：`CHANGELOG.md`、`client.js`、`cordis.patch.yml`、`icon.svg`、`index.js`、`LICENSE`、`locale/{en,zh}.json`、`NOTES.zh.md`、`package.json`、`README.md`、`README.zh-CN.md`（1.0.0 时该文件还叫 `README.zh.md`）；
+- 打包内容实测 12 个文件：`CHANGELOG.md`、`client.js`、`cordis.patch.yml`、`icon.svg`、`index.js`、`LICENSE`、`locale/{en,zh}.json`、`NOTES.zh.md`、`package.json`、`README.md`、`README.en.md`（1.0.0 时英文版叫 `README.md`、中文版叫 `README.zh.md`；1.0.1 时中文版叫 `README.zh-CN.md`）；
 - `package.json` 已带 `publishConfig`（`access: public`、`registry: https://registry.npmjs.org/`）与 `engines.node >= 18`，无需额外开关。
 
 发布步骤（本机实测走通的顺序）：
@@ -180,12 +185,14 @@ npm error Two-factor authentication or granular access token with bypass 2fa ena
 
 **时间线（趁早规划）**：Bypass-2FA 令牌的**直发**能力会在 **2027 年 1 月**被移除（npm 生成页上的黄条原文：*The ability to publish new versions directly with a granular access token will be removed in January 2027*，并建议改用 *Read and write (stage only)* + 发布时补一次 OTP，或改用 Trusted Publishing）。也就是说上面第 1 条只能用到 2027-01；到期后改用 Trusted Publishing，或 stage-only 令牌 + `npm stage publish` 后再走完发布。
 
-### 发布后的实测情况（1.0.0 / 1.0.1）
+### 发布后的实测情况（1.0.0 / 1.0.1 / 1.1.0）
 
-- 注册表核对：`dist-tags.latest = 1.0.0`，`versions = ["0.0.0-stage", "1.0.0"]`，`dist.shasum`/`dist.integrity` 与 `npm publish` 输出一致，`maintainers = swordd`；
-- 端到端验收：在临时目录 `pnpm add dsh-plugin-sidebar-balance`，装到的是 `1.0.0`，11 个预期文件齐全，`client.js` 的 Loader id、`cordis.patch.yml` 的行名、`icon` 与 `dsh.bundle` 都正确——**按包名安装这条路是通的**；
-- **包里多出一个 `0.0.0-stage`**：这是 npm 的 *staged publishing* 占位版本（描述为 `Temporary package placeholder for staged publishing`，2 个文件 348 字节，创建时间比 1.0.0 早 34 秒，应该是网页上误触了 *Staged Packages* 流程）。它排在 `latest` 之外、不影响 `dsh plugin add`，但会让注册表上出现一个无意义的版本号；72 小时内可 `npm unpublish dsh-plugin-sidebar-balance@0.0.0-stage` 清掉。
-- **页面 README 由文件名排序决定**，见上一节；`README.zh.md` → `README.zh-CN.md` 这个修正只能靠发新版本体现。
+- 注册表核对：1.0.0 发布后 `latest = 1.0.0`、`maintainers = swordd`、`dist.shasum`/`dist.integrity` 与 `npm publish` 输出一致；随后 `latest` 依次推进到 1.0.1、1.1.0；
+- 端到端验收（临时目录 `pnpm add dsh-plugin-sidebar-balance`）：装到的是注册表上的版本，11 个预期文件齐全，`client.js` 的 Loader id、`cordis.patch.yml` 的行名、`icon` 与 `dsh.bundle` 都正确——**按包名安装这条路是通的**；
+- **App 内安装也已跨机验证**：用朋友的账号在他的电脑上走 **侧边栏 →「插件」→「添加插件」→ 填包名**，安装成功、插件激活、余额正常显示。这是推荐给普通用户的首选路径（不需要终端，也不需要选 npm 源）；
+- **按包名安装时的版本解析有个坑**：1.0.1 刚发布几分钟时，`dsh plugin ... add dsh-plugin-sidebar-balance` 装到的是 1.0.0——pnpm 的 `minimumReleaseAge` 供应链策略会跳过「太新」的版本，profile 的 `pnpm-workspace.yaml` 里会多出一条 `minimumReleaseAgeExclude: dsh-plugin-sidebar-balance@1.0.0`。等一会儿或显式写版本（`... add dsh-plugin-sidebar-balance@1.0.1`）即可绕开，实测全新 profile 随后直接拿到 1.0.1；
+- **包里有 `0.0.0-stage`**：npm 的 *staged publishing* 占位版本（`Temporary package placeholder for staged publishing`，2 个文件 348 字节，创建时间比 1.0.0 早 34 秒，应为网页上误触 *Staged Packages* 流程）。不在 `latest` 上、不影响安装，但会留在版本列表里；见上文的凭据限制——**网页没有按版本删除入口，CLI 的 `npm unpublish` 又需要能出 OTP 的凭据**，所以最终决定留着；
+- **页面 README 由文件名排序决定**，见上一节；1.0.0 → 1.0.1（中文版改名）与 1.1.0（中文变默认）两次调整都只能靠发新版本体现。
 
 认证方式与开关见 npm 官方文档：[Requiring 2FA for package publishing and settings modification](https://docs.npmjs.com/requiring-2fa-for-package-publishing-and-settings-modification/)、[Creating and viewing access tokens](https://docs.npmjs.com/creating-and-viewing-access-tokens/)，以及收紧公告 [Restricting npm bypass-2FA granular access tokens](https://github.blog/changelog/2026-07-31-restricting-npm-bypass-2fa-granular-access-tokens/)。
 
@@ -200,9 +207,12 @@ dsh plugin --profile <名字> add dsh-plugin-sidebar-balance   # 换个 profile 
 注意：
 
 - **首次发布即认领名字**，之后只有你的账号能发同名包；
-- 发错了：72 小时内可 `npm unpublish <包名>@<版本>`，超时后只能发补丁版本并 `npm deprecate` 旧版本；
-- **但 unpublish 需要另一类凭据**：实测用发布用的 bypass-2FA granular token 执行 `npm unpublish` 会被拒（`Granular access tokens that bypass two-factor authentication may not perform this action`）——npm 把删除已发布版本归为账户级破坏性操作。可行做法是另开一个终端用 `npm login --auth-type=legacy`（会提示 `Enter OTP:`，需要账号已绑定认证器）后执行；该次登录会往 `~/.npmrc` 写入另一个同名 `_authToken` 键，**会覆盖 granular token**，删完记得换回来；
-- **`npm login --auth-type=legacy` 一定会要 OTP**，即使你认为账号没开 2FA——npm 对 CLI 密码登录本身强制 2FA。想确认账号状态就跑 `npm profile get`，看 `two-factor auth` 一栏；
+- 发错了：**72 小时内**可 `npm unpublish <包名>@<版本>`（官网 *Unpublish Policy*），超时后只能发补丁版本并 `npm deprecate` 旧版本；
+- **但 unpublish 需要另一类凭据**：实测用发布用的 bypass-2FA granular token 执行 `npm unpublish` 会被拒（`Granular access tokens that bypass two-factor authentication may not perform this action`）——npm 把删除已发布版本归为账户级破坏性操作。CLI 可行的做法是另开终端 `npm login --auth-type=legacy`（会提示 `Enter OTP:`，需要账号已绑定**能出 6 位码的认证器**）；该次登录会往 `~/.npmrc` 写入另一个同名 `_authToken` 键、**会覆盖 granular token**，删完记得换回来；
+- **`npm login --auth-type=legacy` 一定会要 OTP**，即使你认为账号没开 2FA——npm 对 CLI 密码登录本身强制 2FA。想在网页确认账号状态：Account → Two-Factor Authentication；**注意 `npm profile get` 这条路走不通**，实测被 403 拒绝（bypass-2FA 令牌没有读账号资料的权限，只能发包）；
+- **网页没有「按版本删除」的入口**：包的 Settings 页只有 *Deprecate package*（标记所有版本为弃用）与 *Delete package*（**整包删除，连 1.0.x 一起删**）。所以想清掉某个杂版本，要么具备能出 OTP 的凭据走 CLI，要么整包删掉重发——后者会丢失已发布的 `latest`、并需重新认领名字，**不建议**为一个占位版本这么做；
+- **包级 *Publishing access* 设置管不了这条限制**：本机该设置是 *Require two-factor authentication or a granular access token with bypass 2fa enabled*（即允许 bypass-2FA 令牌），unpublish 仍被拒——说明这属于账号级策略，包级设置不覆盖它；
+- 顺带：同一页有 **Trusted Publisher（OIDC，GitHub Actions / GitLab / CircleCI）** 区块，这正是 2027-01 之后推荐的发布方式，可按需配置；
 - 以后每次发版：`package.json` 提版本 → 更新 `CHANGELOG.md` → `npm publish` → 打 `v<版本>` 标签推送；
 - `npm pack --dry-run` 是发布前的最后一道校验，确认文件清单没有意外增删；
 - 版本号只覆盖本包：DSH 升级后即使本包一行没改也需要发新版本，`CHANGELOG.md` 里逐版本记录验证过的 DSH 构建。
