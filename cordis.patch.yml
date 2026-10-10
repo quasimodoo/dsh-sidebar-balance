@@ -1,0 +1,5 @@
+# The layer this bundle contributes to a profile: one row naming the package, so
+# Node module resolution finds the installed code instead of a source path.
+- insert:
+    - id: sidebar-balance
+      name: 'dsh-sidebar-balance'

@@ -1,0 +1,11 @@
+node_modules/
+*.tgz
+*.log
+
+# Legacy top-level copy of the package sources; the live sources are under
+# packages/. Ignored so a stale copy can never be committed by accident.
+/dsh-sidebar-balance/
+
+# Machine-local notes: real workspace paths, profile backups, author identity.
+# Package documentation keeps placeholder paths only.
+.local-*

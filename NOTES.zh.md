@@ -1,0 +1,141 @@
+# 开发笔记（内部实现要点）
+
+本文件记录编写这个插件时**实证**得到的 DSH 内部约定，以及已知风险。所有结论都来自对已安装构建产物（`app.asar`）与官方包文档的核对，不是猜测。DSH 升级后这些点最可能变化，排查时请优先复查这里。
+
+## 插件做了什么
+
+在左侧边栏底部、账号入口正上方显示 DeepSeek 账号余额：
+
+```
+余额                    ¥12.34 +¥2.00
+```
+
+- 主数字 = 充值余额（`normal_wallets`）
+- `+¥2.00` = 赠金余额（`bonus_wallets`），仅当 ≥ ¥0.01 时显示
+- 悬停提示 = `充值余额 ¥12.34 · 赠金余额 ¥2.00 · 合计余额 ¥14.34`
+- 侧边栏折叠时隐藏赠金（56px 导轨放不下）
+
+## 挂载点
+
+`sidebar.footer.action`，由 `@deepseek-ai/dsh-client-ui-sidebar` 声明，规格为：
+
+```js
+"sidebar.footer.action": { kind: "list", scope: "root" }
+```
+
+它在侧边栏渲染树里位于 `.footerActions`，紧随其后的 `.settingsArea` 才是账号入口（`sidebar.settings`，`kind: "single"`）。父级传给条目的 props 是 `{ wide }`。
+
+其他相关插槽（同一声明）：`sidebar.brand.mark`、`sidebar.brand.name`、`sidebar.toggle.badge`、`sidebar.panellist`、`sidebar.workspaces`、`sidebar.settings`。
+
+折叠时 Windows 标题栏模式下 `.footArea` 被 CSS 隐藏（`[data-windows-titlebar] .collapsed .footArea { display:none }`），组件仍挂载。
+
+## 余额数据来源
+
+```js
+const result = await ctx.remote.account.getBalance({ version, locale, timezoneOffsetSeconds });
+```
+
+- `result` 是 `RemoteResult`：`{ ok: true, value }` 或 `{ ok: false, error }`
+- `result.value` 形如 `{ status: 'ready', value: Wallet[], bonusWallets: Wallet[] }`
+- `Wallet = { currency: 'CNY' | 'USD', balance: <十进制字符串> }`
+
+依据：
+
+```js
+// dsh-deepseek-account-platform/lib/types/details.js
+const wallet  = z.object({ currency: z.enum(['CNY','USD']), balance: z.string().regex(decimal) });
+const summary = z.object({ normal_wallets: z.array(wallet), bonus_wallets: z.array(wallet) });
+balance: { path: '/api/v0/users/get_user_summary', parse: (value) =>
+  ({ status: 'ready', value: parsed.data.normal_wallets, bonusWallets: parsed.data.bonus_wallets }) }
+```
+
+```js
+// dsh-client-ui-settings-account/lib/client.js —— 官方账号页的消费方式
+const read = async (field, query) => { ... details: { ...details, [field]: value } };  // 存 result.value
+const wallets = details?.balance?.status === "ready" ? details.balance.value : void 0;   // 再取 .value
+```
+
+所以真实钱包数组在 `result.value.value`（`normalizeWallets()` 同时兼容 `normal_wallets` / `value` / `wallets`）。
+
+## 最容易踩的坑：命名空间是独立服务
+
+**Remote 的每个命名空间不是 `remote` 服务上的属性**，而是一个独立 Cordis 服务：
+
+```js
+// dsh-api-gateway/lib/client.js
+function remoteServiceKey(namespace) { return `remote.${namespace}`; }
+var RemoteNamespaceService = class extends Service {
+  constructor(ctx, name, invokeRemote) { super(ctx, remoteServiceKey(name)); ... }
+};
+```
+
+因此：
+
+- ✅ 正确：`ctx.remote.account`（经 ctx 代理按 `remote.account` 点名解析）
+- ✅ 正确：`ctx.get('remote.account')`
+- ❌ 错误：`ctx.get('remote').account` —— 基础实例上没有该属性，**访问即抛错**（不会返回 undefined）
+
+插件里 `resolveAccount()` 按上述顺序依次尝试，失败时把每条路径标成 `:none` / `:threw` 便于定位。
+
+## 客户端插件契约
+
+```js
+window.__ModuleLoader__.load({ id: '<包名>', factory(require) { ... } });
+```
+
+- `id` 必须**恰好等于包名**（`dsh-client-modules` 只把浏览器半侧挂在说明符等于包名的 Loader 行上）
+- `require('react')` 可用；`dsh.client.external` 声明其他非基线运行时依赖
+- 不要 `require` 任何 `@deepseek-ai/dsh-client-*` 包（会随版本变化且无类型检查）
+
+## 安装与生效
+
+- profile：`<用户目录>\.dsh\profiles\desktop`
+- 安装 = `dependencies` 里加 `link:<绝对路径>` + `dsh.profile.bundles` 里加包名
+- App 内**侧边栏 →「插件」→「添加插件」**接受「包名 / Git 地址 / 压缩包 / 本地绝对路径」，是官方且事务性的安装入口
+- **客户端模块表在页面加载时组装进 `window.__DSH_BOOT__`**，模块由 node 半侧通过 `/plugins/<id>/client.js` 提供；而 `client-hmr` 那条链在没有 `pnpm run dev:web` 时**空转**。所以新装或改动客户端插件后，**必须刷新页面**（Ctrl+R）。
+- 警告：profile 的 `package.json` 里 `link:` 路径**不要含非 ASCII 字符**（如 `×`、中文目录名）。实测带这类字符的目录能正确写入 UTF-8，但这条路径经历过一次被误判为乱码的排查，改用纯 ASCII 路径（例如统一放在 `C:\Users\<用户名>\project\` 下）更省事。
+
+## 刷新策略
+
+| 触发 | 强制 | 说明 |
+|---|---|---|
+| 组件挂载 | 是 | 立即取一次 |
+| 窗口获得焦点 | 否 | 距上次读取 < 15s 则跳过（防 Alt-Tab 连打接口） |
+| 每 5 分钟 | 否 | 兜底心跳 |
+
+每次轮询都是一次真实请求：客户端 → 本机 host → DeepSeek 平台 `get_user_summary`。官方账号页**不轮询**（仅在打开、登录、重连时读），本插件比它更主动，这是刻意换取"常驻可见"的代价。
+
+## 已知风险
+
+1. **全部依赖内部扩展点**：插槽名、`remote.<ns>` 命名约定、`window.__ModuleLoader__`、`getBalance` 返回结构，都不是稳定的公共 API，DSH 升级后可能失效。当前验证版本：`0.2.0-rc.2`（桌面端构建 `0.2.0-rc.2-04f392c`）。
+2. **`CLIENT_VERSION` 仍是常量**：编译产物会把 `DSH_CLIENT_VERSION` 内联进客户端包，纯 JS 包做不到，所以 `client.js` 里的 `clientVersion()` 先读 `globalThis.DSH_CLIENT_VERSION`、再读 `window.__DSH_BOOT__.clientVersion`，都取不到才回退到常量 `'0.2.0-rc.2'`。**每次升级 DSH 后请同步该常量**，否则账号请求会带上过期身份。
+3. **余额格式化是复刻**平台规则（两位小数、正数截断到分、正数不足一分显示 `<X.01`），没有复用官方实现（官方用 big.js，浏览器模块表里不一定可用）。
+4. 插件不接触任何 token；余额经 App 自身的已认证 Remote 读取。
+5. **包内文档与代码一律用占位路径**（`C:\Users\<用户名>\project\...`、`<用户目录>\.dsh\...`、`github.com/example-user/...`）。不要把自己的工作区真实路径、目录名或个人主页地址写回来；本机-专属的备注留在仓库根、已被 `.gitignore` 忽略的 `.local-notes.md` 里。
+
+## 发布到 GitHub / npm 的清单
+
+依据官方 [打包与安装插件](https://github.com/deepseek-ai/DeepSeek-Harness/blob/master/docs/user/develop/basic/publish.zh.md?plain=1)：
+
+- [x] 包名改为可发布的 `dsh-sidebar-balance`（`@local/*` 不可发布）
+- [x] 加 `files` 字段（`index.js`、`client.js`、`cordis.patch.yml`、`locale/*.json`、两个 README、`NOTES.zh.md`、`LICENSE`）
+- [x] 加 `LICENSE`（MIT）
+- [x] 加 `README.md` / `README.zh.md`（含风险声明与适配版本）
+- [x] 加 `repository` 字段（`url` 指向实际远端 `github.com/quasimodoo/dsh-sidebar-balance`；包已在仓库根，无需 `directory`）
+- [x] 加 `locale/zh.json`、`locale/en.json` 的 `meta.title` / `meta.description`
+- [x] 加 `exports` 的 `./package.json` 与 `./locale/*.json`（展示元信息读取走 Node exports，缺了就读不到卡片标题）
+- [x] `CLIENT_VERSION` 改为「运行时优先、常量兜底」
+- [ ] 可选 `icon.svg`：`package.json` 顶层加 `"icon": "./icon.svg"`，并把该文件加进 `files`；缺省时管理器用默认插画
+- [ ] npm 发布前：`name` 若被占用需改名，`repository.url` 换成实际远端
+
+包在仓库根，`pnpm pack` 打进去的就是根目录这一份（`README.md` / `README.zh.md` / `NOTES.zh.md` 都在 `files` 里）。
+
+## 后续待办
+
+1. ~~迁移源码到新工作区~~ 已完成：包直接在仓库根。
+2. ~~修正 profile 的 `link:` 指向~~ 已完成：把 profile 的 `package.json` 改成 `"dsh-sidebar-balance": "link:<工作区绝对路径>"`（Windows 写法如 `link:C:/Users/<用户名>/project/dsh-sidebar-balance`），`dsh.profile.bundles` 同步改名，并在 profile 目录内重跑 `pnpm install` 建立新链接、删掉失效的 `node_modules/@local` 链接；改动前备份 profile 的 `package.json` 与 `pnpm-lock.yaml`。**改完要刷新页面**才会加载新的客户端模块。
+3. **包必须留在仓库根**：`dsh plugin add github:<用户>/<仓库>` 把**仓库根**当成依赖安装。早期把包放在 `packages/dsh-sidebar-balance/` 时实测会得到一条警告——`declares no dsh.bundle — installed as a plain dependency, not a profile layer`——即根目录没有清单、插件永远不会激活。单包仓库摊平到根是唯一可靠的布局；多包仓库要走 npm 或 tarball 分发。
+4. ~~完成上面的发布清单~~ 见上一节，只剩可选的 `icon.svg` 与发布时的仓库地址替换。
+5. `git init` + 首次提交已完成并推到 `github.com/quasimodoo/dsh-sidebar-balance`；后续 `gh` CLI 未安装，远端操作需在网页或用本机 git 完成。
+6. **旧的插件目录已不再被任何地方引用**，可以整目录删除；如果迁移时把源码复制（而不是移动）到了新工作区，旧副本会连同原目录的权限一起被带过来，可能删不掉——那种情况下用管理员权限删除，或把会话切到完全权限后再处理。同理，**工作区根上的 `Everyone: Deny DeleteSubdirectoriesAndFiles` 会继承给子目录**，标准权限修复脚本按设计只补允许项、不动拒绝项。
+
