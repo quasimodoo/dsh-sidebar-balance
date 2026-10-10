@@ -1,5 +1,5 @@
 {
-  "name": "dsh-sidebar-balance",
+  "name": "dsh-plugin-sidebar-balance",
   "version": "1.0.0",
   "description": "Shows the DeepSeek account balance in the sidebar footer, just above the account entry.",
   "keywords": [

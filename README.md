@@ -1,4 +1,4 @@
-# dsh-sidebar-balance
+# dsh-plugin-sidebar-balance
 
 English | [中文](README.zh.md)
 
@@ -16,8 +16,8 @@ The value comes from the same Application Remote the Account settings page uses,
 
 ## Install (no command line needed)
 
-1. Open the [Releases page](https://github.com/quasimodoo/dsh-sidebar-balance/releases) and download `dsh-sidebar-balance-1.0.0.tgz` (about 16 KB).
-2. In the app, open **侧边栏 →「插件」→「添加插件」** and enter the full path of the file you just downloaded, for example `C:\Users\<user>\Downloads\dsh-sidebar-balance-1.0.0.tgz`.
+1. Open the [Releases page](https://github.com/quasimodoo/dsh-sidebar-balance/releases) and download `dsh-plugin-sidebar-balance-1.0.0.tgz` (about 16 KB).
+2. In the app, open **侧边栏 →「插件」→「添加插件」** and enter the full path of the file you just downloaded, for example `C:\Users\<user>\Downloads\dsh-plugin-sidebar-balance-1.0.0.tgz`.
 3. **Reload the page** (Ctrl+R). The balance appears in the sidebar footer, directly above the account entry.
 
 The npm source selector in that dialog does not matter for this install: the package has no dependencies, so nothing is downloaded from a registry.
@@ -27,7 +27,7 @@ To upgrade later, download the new `.tgz` from the newer release and install it 
 If the install fails with `EPERM: operation not permitted, rename`, a previous copy is still registered and the app is holding the folder. Uninstall the old entry first, or fully quit the app (including the tray icon) and install from the command line:
 
 ```sh
-dsh plugin --profile desktop add "C:\Users\<user>\Downloads\dsh-sidebar-balance-1.0.0.tgz"
+dsh plugin --profile desktop add "C:\Users\<user>\Downloads\dsh-plugin-sidebar-balance-1.0.0.tgz"
 ```
 
 ## Install from source (maintainers)
@@ -35,8 +35,8 @@ dsh plugin --profile desktop add "C:\Users\<user>\Downloads\dsh-sidebar-balance-
 Building the tarball yourself, or installing the checkout directly:
 
 ```sh
-pnpm pack                                                              # produces dsh-sidebar-balance-1.0.0.tgz
-dsh plugin --profile <name> add ./dsh-sidebar-balance-1.0.0.tgz        # then install it
+pnpm pack                                                              # produces dsh-plugin-sidebar-balance-1.0.0.tgz
+dsh plugin --profile <name> add ./dsh-plugin-sidebar-balance-1.0.0.tgz # then install it
 ```
 
 ```sh
@@ -46,7 +46,7 @@ dsh plugin --profile <name> add https://github.com/quasimodoo/dsh-sidebar-balanc
 
 In the desktop app the same install is available from **侧边栏 →「插件」→「添加插件」**, which accepts a package name, a Git address, a tarball, or a local absolute path. The npm source selector in that dialog only affects dependency downloads; this package pulls nothing from a registry, so either source works.
 
-`dsh plugin --profile <name> add dsh-sidebar-balance` (by package name) does **not** work today: that name on the npm registry belongs to an unrelated package. See [Distribution](#distribution).
+`dsh plugin --profile <name> add dsh-plugin-sidebar-balance` (by package name) needs the package on the npm registry first: the name is available, but nothing is published under it yet. See [Distribution](#distribution).
 
 This package is plain JavaScript with no build step and no `prepare` script, so a git install needs no `allowBuilds` authorization and no build output.
 
@@ -58,9 +58,9 @@ The profile's `link:` path should stay ASCII. A path containing characters such 
 
 | Channel | Command for the user | State |
 |---|---|---|
-| Tarball (`pnpm pack`) | `dsh plugin --profile <name> add ./dsh-sidebar-balance-1.0.0.tgz` | **Verified end to end, including reading a real balance.** No git, no registry, no proxy, no SSH key. This is the recommended channel; attach the file to a GitHub Release so users get a download link. |
+| Tarball (`pnpm pack`) | `dsh plugin --profile <name> add ./dsh-plugin-sidebar-balance-1.0.0.tgz` | **Verified end to end, including reading a real balance.** No git, no registry, no proxy, no SSH key. This is the recommended channel; attach the file to a GitHub Release so users get a download link. |
 | Git repository | `dsh plugin --profile <name> add github:<user>/<repo>` | The package installs and activates. Depends on the user's git network and credentials: pnpm may resolve the GitHub remote over SSH (needs a key on the account) or over HTTPS (needs to reach port 443). On a network where port 22 is filtered, the shorthand fails with `Permission denied (publickey)`; use the explicit `https://` URL, or add these two rewrite rules once: `git config --global url."https://github.com/".insteadOf "git@github.com:"` and the same with `ssh://git@github.com/`. |
-| npm | `dsh plugin --profile <name> add <package-name>` | **Blocked on the name.** `dsh-sidebar-balance` already exists on npm (`latest` 0.1.1, unrelated project), so publishing needs a different name or a scope such as `@<user>/dsh-sidebar-balance`. |
+| npm | `dsh plugin --profile <name> add dsh-plugin-sidebar-balance` | **Name chosen, not published yet.** The package was renamed from `dsh-sidebar-balance` because that name on npm belongs to an unrelated project (`latest` 0.1.1); `dsh-plugin-sidebar-balance` is free and follows the ecosystem's `dsh-plugin-*` convention. Publishing is the remaining step. |
 
 Two packaging rules this repository follows because of how the plugin manager installs things:
 
@@ -101,6 +101,7 @@ Every poll is a real request: browser → local Host → DeepSeek Platform `get_
 ├── index.js            # Host half: nothing to prepare
 ├── client.js           # Client half: the sidebar row
 ├── locale/{en,zh}.json # Plugin Manager card title and description
+├── icon.svg            # Plugin Manager card artwork
 ├── NOTES.zh.md         # verified internals and known risks
 └── README.md / README.zh.md
 ```

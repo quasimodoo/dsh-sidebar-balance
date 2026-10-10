@@ -2,4 +2,4 @@
 # Node module resolution finds the installed code instead of a source path.
 - insert:
     - id: sidebar-balance
-      name: 'dsh-sidebar-balance'
+      name: 'dsh-plugin-sidebar-balance'

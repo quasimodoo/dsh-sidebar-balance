@@ -1,4 +1,4 @@
-# dsh-sidebar-balance
+# dsh-plugin-sidebar-balance
 
 [English](README.md) | 中文
 
@@ -16,8 +16,8 @@
 
 ## 安装（不需要命令行）
 
-1. 打开 [Releases 页面](https://github.com/quasimodoo/dsh-sidebar-balance/releases)，下载 `dsh-sidebar-balance-1.0.0.tgz`（约 16 KB）。
-2. 在 App 里打开 **侧边栏 →「插件」→「添加插件」**，填入刚下载文件的完整路径，例如 `C:\Users\<用户名>\Downloads\dsh-sidebar-balance-1.0.0.tgz`。
+1. 打开 [Releases 页面](https://github.com/quasimodoo/dsh-sidebar-balance/releases)，下载 `dsh-plugin-sidebar-balance-1.0.0.tgz`（约 16 KB）。
+2. 在 App 里打开 **侧边栏 →「插件」→「添加插件」**，填入刚下载文件的完整路径，例如 `C:\Users\<用户名>\Downloads\dsh-plugin-sidebar-balance-1.0.0.tgz`。
 3. **刷新页面**（Ctrl+R）。余额会出现在侧边栏底部、账号入口正上方。
 
 那个对话框里的 npm 源选择对本安装没有影响：本包没有任何依赖，不会从 registry 下载东西。
@@ -27,7 +27,7 @@
 如果安装报 `EPERM: operation not permitted, rename`，说明旧的一份仍登记在 profile 里、且 App 占着该目录。先卸载旧条目，或**完全退出 App**（含托盘图标）后用命令行安装：
 
 ```sh
-dsh plugin --profile desktop add "C:\Users\<用户名>\Downloads\dsh-sidebar-balance-1.0.0.tgz"
+dsh plugin --profile desktop add "C:\Users\<用户名>\Downloads\dsh-plugin-sidebar-balance-1.0.0.tgz"
 ```
 
 ## 从源码安装（维护者）
@@ -35,8 +35,8 @@ dsh plugin --profile desktop add "C:\Users\<用户名>\Downloads\dsh-sidebar-bal
 自己打包，或直接安装工作区：
 
 ```sh
-pnpm pack                                                              # 生成 dsh-sidebar-balance-1.0.0.tgz
-dsh plugin --profile <名字> add ./dsh-sidebar-balance-1.0.0.tgz        # 然后安装
+pnpm pack                                                              # 生成 dsh-plugin-sidebar-balance-1.0.0.tgz
+dsh plugin --profile <名字> add ./dsh-plugin-sidebar-balance-1.0.0.tgz # 然后安装
 ```
 
 ```sh
@@ -46,7 +46,7 @@ dsh plugin --profile <名字> add https://github.com/quasimodoo/dsh-sidebar-bala
 
 桌面端也可以用 **侧边栏 →「插件」→「添加插件」**，它接受「包名 / Git 地址 / 压缩包 / 本地绝对路径」。那个对话框里的 npm 源选择只影响依赖下载；本包不从 registry 拉任何东西，所以选哪个源都可以。
 
-按包名安装（`dsh plugin --profile <名字> add dsh-sidebar-balance`）**目前不可用**：npm 上这个包名属于另一个无关项目。见[分发渠道](#分发渠道)。
+按包名安装（`dsh plugin --profile <名字> add dsh-plugin-sidebar-balance`）需要先把包发到 npm：这个名字可用，但目前还没有发布任何版本。见[分发渠道](#分发渠道)。
 
 本包是纯 JavaScript，没有构建步骤也没有 `prepare`，所以 Git 安装既不需要 `allowBuilds` 授权，也不依赖构建产物。
 
@@ -58,9 +58,9 @@ profile 的 `link:` 路径请保持 ASCII。含 `×` 或中文目录名的路径
 
 | 渠道 | 用户的命令 | 状态 |
 |---|---|---|
-| Tarball（`pnpm pack`） | `dsh plugin --profile <名字> add ./dsh-sidebar-balance-1.0.0.tgz` | **已端到端验证，包括真的读出余额。** 不碰 git、不碰 registry、不需要代理、不需要 SSH key。这是推荐渠道：把文件挂到 GitHub Release 上，用户就有下载链接。 |
+| Tarball（`pnpm pack`） | `dsh plugin --profile <名字> add ./dsh-plugin-sidebar-balance-1.0.0.tgz` | **已端到端验证，包括真的读出余额。** 不碰 git、不碰 registry、不需要代理、不需要 SSH key。这是推荐渠道：把文件挂到 GitHub Release 上，用户就有下载链接。 |
 | Git 仓库 | `dsh plugin --profile <名字> add github:<用户>/<仓库>` | 包能装上并激活。取决于用户的 git 网络与凭据：pnpm 可能用 SSH 解析远端（需要账号上有 key），也可能用 HTTPS（需要能连 443）。若网络屏蔽了 22 端口，简写会以 `Permission denied (publickey)` 失败——改用显式 `https://` 地址，或一次性加上这两条改写规则：`git config --global url."https://github.com/".insteadOf "git@github.com:"`，以及把 `git@github.com:` 换成 `ssh://git@github.com/` 的同样一条。 |
-| npm | `dsh plugin --profile <名字> add <包名>` | **卡在包名上。** `dsh-sidebar-balance` 在 npm 上已存在（`latest` 0.1.1，无关项目），要发布得换名或使用 scope，例如 `@<用户>/dsh-sidebar-balance`。 |
+| npm | `dsh plugin --profile <名字> add dsh-plugin-sidebar-balance` | **名字已定，尚未发布。** 原名 `dsh-sidebar-balance` 在 npm 上属于另一个无关项目（`latest` 0.1.1），因此改名为 `dsh-plugin-sidebar-balance`——它未被占用，也符合生态的 `dsh-plugin-*` 惯例。剩下的只是发布这一步。 |
 
 为了让插件管理器能正确安装，本仓库遵守两条打包规则：
 
@@ -101,6 +101,7 @@ Tarball 安装可能报 `EPERM: operation not permitted, rename .../node_modules
 ├── index.js            # Host 半侧：无需准备
 ├── client.js           # Client 半侧：侧边栏那一行
 ├── locale/{en,zh}.json # 插件管理器卡片标题与描述
+├── icon.svg            # 插件管理器卡片图标
 ├── NOTES.zh.md         # 实证内幕与已知风险
 └── README.md / README.zh.md
 ```

@@ -13,7 +13,7 @@
  * only hangs the factory on the row whose specifier matches.
  */
 window.__ModuleLoader__.load({
-  id: 'dsh-sidebar-balance',
+  id: 'dsh-plugin-sidebar-balance',
   factory(require) {
     const React = require('react');
     const h = React.createElement;
