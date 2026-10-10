@@ -14,15 +14,35 @@
 
 数据来自官方账号页所用的同一个 Application Remote，因此始终与 设置 → 账号与余额 一致。
 
-## 安装（不需要命令行）
+## 安装
 
-1. 打开 [Releases 页面](https://github.com/quasimodoo/dsh-sidebar-balance/releases)，下载 `dsh-plugin-sidebar-balance-1.0.0.tgz`（约 16 KB）。
-2. 在 App 里打开 **侧边栏 →「插件」→「添加插件」**，填入刚下载文件的完整路径，例如 `C:\Users\<用户名>\Downloads\dsh-plugin-sidebar-balance-1.0.0.tgz`。
-3. **刷新页面**（Ctrl+R）。余额会出现在侧边栏底部、账号入口正上方。
+### npm（一条命令）
 
-那个对话框里的 npm 源选择对本安装没有影响：本包没有任何依赖，不会从 registry 下载东西。
+```sh
+dsh plugin --profile <名字> add dsh-plugin-sidebar-balance
+```
 
-以后升级：从新版本 Release 下载新的 `.tgz`，用同样方式安装即可覆盖旧版本。
+本包是纯 JavaScript，没有依赖、没有构建步骤、没有 `prepare`，所以不会编译任何东西，除包本身外也不从 registry 下载任何内容。
+
+### 从本仓库装（一条命令，不碰 registry）
+
+```sh
+dsh plugin --profile <名字> add github:quasimodoo/dsh-sidebar-balance
+```
+
+Git 安装取的是**源码**而不是构建产物——这里恰好无所谓，因为没有东西需要构建。如果简写走了 SSH 而你的网络挡了 22 端口，改用显式地址 `https://github.com/quasimodoo/dsh-sidebar-balance.git`。
+
+### 在 App 里装（不用命令行）
+
+**侧边栏 →「插件」→「添加插件」** 接受包名（`dsh-plugin-sidebar-balance`）、Git 地址、压缩包或本地绝对路径。也可以从 [Releases 页面](https://github.com/quasimodoo/dsh-sidebar-balance/releases) 下载 `dsh-plugin-sidebar-balance-1.0.0.tgz`（约 16 KB）后填它的完整路径，例如 `C:\Users\<用户名>\Downloads\dsh-plugin-sidebar-balance-1.0.0.tgz`。那个对话框里的 npm 源选择只影响依赖下载；本包不从 registry 拉任何东西。
+
+### 装完之后
+
+**刷新页面**（Ctrl+R）：浏览器模块表在页面加载时组装进 `window.__DSH_BOOT__`，而没有 `pnpm run dev:web` 时 client-hmr 那条链是空转的。余额会出现在侧边栏底部、账号入口正上方。如果那一行显示 `—` 加一段原因码，悬停它，并到控制台看 `[sidebar-balance]` 的诊断信息。
+
+如果这次装的是**改了包名的新包**（而不只是同一个包的新版本），还需要重启 App：Host 侧的加载器行是启动时组装的。
+
+以后升级：用同样方式安装新版本即可覆盖旧版本。
 
 如果安装报 `EPERM: operation not permitted, rename`，说明旧的一份仍登记在 profile 里、且 App 占着该目录。先卸载旧条目，或**完全退出 App**（含托盘图标）后用命令行安装：
 
@@ -37,20 +57,12 @@ dsh plugin --profile desktop add "C:\Users\<用户名>\Downloads\dsh-plugin-side
 ```sh
 pnpm pack                                                              # 生成 dsh-plugin-sidebar-balance-1.0.0.tgz
 dsh plugin --profile <名字> add ./dsh-plugin-sidebar-balance-1.0.0.tgz # 然后安装
+dsh plugin --profile <名字> add ./                                    # 或直接链接这个工作区
 ```
 
-```sh
-dsh plugin --profile <名字> add github:quasimodoo/dsh-sidebar-balance  # 从本仓库
-dsh plugin --profile <名字> add https://github.com/quasimodoo/dsh-sidebar-balance.git  # 同上，显式 HTTPS
-```
+`dsh plugin add github:quasimodoo/dsh-sidebar-balance` 把**仓库根**当成依赖安装，这也是包放在仓库根的原因：如果嵌在 `packages/` 子目录里，装到的是一个没有清单的目录，插件永远不会激活。
 
-桌面端也可以用 **侧边栏 →「插件」→「添加插件」**，它接受「包名 / Git 地址 / 压缩包 / 本地绝对路径」。那个对话框里的 npm 源选择只影响依赖下载；本包不从 registry 拉任何东西，所以选哪个源都可以。
-
-按包名安装（`dsh plugin --profile <名字> add dsh-plugin-sidebar-balance`）需要先把包发到 npm：这个名字可用，但目前还没有发布任何版本。见[分发渠道](#分发渠道)。
-
-本包是纯 JavaScript，没有构建步骤也没有 `prepare`，所以 Git 安装既不需要 `allowBuilds` 授权，也不依赖构建产物。
-
-安装或更新客户端半侧后**必须刷新页面**（Ctrl+R）：浏览器模块表在页面加载时组装进 `window.__DSH_BOOT__`，而没有 `pnpm run dev:web` 时 client-hmr 那条链是空转的。
+发布新版本就在这个工作区执行 `npm publish`；命令与发布前检查见 [NOTES.zh.md](NOTES.zh.md)。
 
 profile 的 `link:` 路径请保持 ASCII。含 `×` 或中文目录名的路径曾出现过被按字节误读的排查过程，统一放在 `C:\Users\<用户名>\project\` 这类纯 ASCII 路径下可以完全避开这件事。
 
@@ -60,7 +72,7 @@ profile 的 `link:` 路径请保持 ASCII。含 `×` 或中文目录名的路径
 |---|---|---|
 | Tarball（`pnpm pack`） | `dsh plugin --profile <名字> add ./dsh-plugin-sidebar-balance-1.0.0.tgz` | **已端到端验证，包括真的读出余额。** 不碰 git、不碰 registry、不需要代理、不需要 SSH key。这是推荐渠道：把文件挂到 GitHub Release 上，用户就有下载链接。 |
 | Git 仓库 | `dsh plugin --profile <名字> add github:<用户>/<仓库>` | 包能装上并激活。取决于用户的 git 网络与凭据：pnpm 可能用 SSH 解析远端（需要账号上有 key），也可能用 HTTPS（需要能连 443）。若网络屏蔽了 22 端口，简写会以 `Permission denied (publickey)` 失败——改用显式 `https://` 地址，或一次性加上这两条改写规则：`git config --global url."https://github.com/".insteadOf "git@github.com:"`，以及把 `git@github.com:` 换成 `ssh://git@github.com/` 的同样一条。 |
-| npm | `dsh plugin --profile <名字> add dsh-plugin-sidebar-balance` | **名字已定，尚未发布。** 原名 `dsh-sidebar-balance` 在 npm 上属于另一个无关项目（`latest` 0.1.1），因此改名为 `dsh-plugin-sidebar-balance`——它未被占用，也符合生态的 `dsh-plugin-*` 惯例。剩下的只是发布这一步。 |
+| npm | `dsh plugin --profile <名字> add dsh-plugin-sidebar-balance` | **首选渠道。** 原名 `dsh-sidebar-balance` 在 npm 上属于另一个无关项目（`latest` 0.1.1），因此改名为 `dsh-plugin-sidebar-balance`——它未被占用，也符合生态的 `dsh-plugin-*` 惯例。发布本身是维护者步骤，命令记在 [NOTES.zh.md](NOTES.zh.md)。 |
 
 为了让插件管理器能正确安装，本仓库遵守两条打包规则：
 
@@ -103,6 +115,7 @@ Tarball 安装可能报 `EPERM: operation not permitted, rename .../node_modules
 ├── locale/{en,zh}.json # 插件管理器卡片标题与描述
 ├── icon.svg            # 插件管理器卡片图标
 ├── NOTES.zh.md         # 实证内幕与已知风险
+├── CHANGELOG.md        # 已发布版本，以及各版本验证过的 DSH 构建
 └── README.md / README.zh.md
 ```
 

@@ -140,15 +140,50 @@ window.__ModuleLoader__.load({ id: '<包名>', factory(require) { ... } });
 - **仓库名仍是 `dsh-sidebar-balance`**（`repository.url`、两个 README 的 Releases 链接都指向它），包名与仓库名不一致是刻意的：改仓库名会打断已有链接，且 `github:<用户>/<仓库>` 安装用的是仓库名。
 - 装机路径不受注册表影响：GitHub、tarball、本地路径安装都不查注册表。
 
-包在仓库根，`pnpm pack` 打进去的就是根目录这一份（`README.md` / `README.zh.md` / `NOTES.zh.md` 都在 `files` 里）。
+包在仓库根，`pnpm pack` 打进去的就是根目录这一份（`README.md` / `README.zh.md` / `NOTES.zh.md` / `CHANGELOG.md` 都在 `files` 里）。
+
+### npm 发布操作手册（本机实测）
+
+包名在 npm 上**未被占用**：`npm view dsh-plugin-sidebar-balance` 返回 `E404`（真实请求，说明注册表可达且该名字自由）。发布前状态：
+
+- `npm whoami` 返回 `ENEEDAUTH` —— 本机还没登录过 npm，`~/.npmrc` 不存在；
+- 打包内容实测 12 个文件：`CHANGELOG.md`、`client.js`、`cordis.patch.yml`、`icon.svg`、`index.js`、`LICENSE`、`locale/{en,zh}.json`、`NOTES.zh.md`、`package.json`、`README.md`、`README.zh.md`；
+- `package.json` 已带 `publishConfig`（`access: public`、`registry: https://registry.npmjs.org/`）与 `engines.node >= 18`，无需额外开关。
+
+发布步骤（在自己终端里跑，DSH 会话内做不了交互式登录）：
+
+```sh
+cd <工作区>
+npm login                     # 浏览器打开授权页；或 npm adduser
+npm whoami                    # 应打印你的用户名
+npm view dsh-plugin-sidebar-balance version   # 首次发布前应为 E404
+npm publish                   # 开了 2FA 会提示输入一次性验证码
+```
+
+发布后：
+
+```sh
+npm view dsh-plugin-sidebar-balance version dist.tarball
+git tag v1.0.0 && git push origin v1.0.0      # 顺手打标签
+dsh plugin --profile <名字> add dsh-plugin-sidebar-balance   # 换个 profile 实测一次
+```
+
+注意：
+
+- **首次发布即认领名字**，之后只有你的账号能发同名包；
+- 发错了：72 小时内可 `npm unpublish dsh-plugin-sidebar-balance@1.0.0`，超时后只能发补丁版本并 `npm deprecate` 旧版本；
+- 以后每次发版：`package.json` 提版本 → 更新 `CHANGELOG.md` → `npm publish` → 打 `v<版本>` 标签推送；
+- `npm pack --dry-run` 是发布前的最后一道校验，确认文件清单没有意外增删；
+- 版本号只覆盖本包：DSH 升级后即使本包一行没改也需要发新版本，`CHANGELOG.md` 里逐版本记录验证过的 DSH 构建。
 
 ## 后续待办
 
 1. ~~迁移源码到新工作区~~ 已完成：包直接在仓库根。
 2. ~~修正 profile 指向~~ 已完成（本机）：`<用户目录>\.dsh\profiles\desktop\package.json` 的依赖改成 `"dsh-plugin-sidebar-balance": "link:<工作区绝对路径>"`（Windows 写法如 `link:C:/Users/<用户名>/project/dsh-plugin-sidebar-balance`），`dsh.profile.bundles` 同步，并在 profile 目录内重跑 `pnpm install`；改动前的 `package.json` / `pnpm-lock.yaml` 以同目录 `*.bak-<时间戳>` 备份。验证方式：从 profile 目录 `require.resolve('dsh-plugin-sidebar-balance/client')` 应指向工作区文件。**改完必须刷新页面**才会加载新的客户端模块。若要退回冻结副本，把依赖换回 `file:<tarball 绝对路径>` 再 `pnpm install` 即可。
 3. **包必须留在仓库根**：`dsh plugin add github:<用户>/<仓库>` 把**仓库根**当成依赖安装。早期把包放在 `packages/dsh-sidebar-balance/` 时实测会得到一条警告——`declares no dsh.bundle — installed as a plain dependency, not a profile layer`——即根目录没有清单、插件永远不会激活。单包仓库摊平到根是唯一可靠的布局；多包仓库要走 npm 或 tarball 分发。
-4. ~~完成上面的发布清单~~ 命名问题已解决（改名 `dsh-plugin-sidebar-balance`，见上一节）；剩下的是可选的 `npm publish`。
-5. `git init` + 首次提交已完成并推到 `github.com/quasimodoo/dsh-sidebar-balance`；后续 `gh` CLI 未安装，远端操作需在网页或用本机 git 完成。改名后记得把这次改动提交并推送（本会话里 `git` 能读、**不能写** `.git`：见第 6 条的沙箱限制）。
+4. ~~完成上面的发布清单~~ 命名问题已解决（改名 `dsh-plugin-sidebar-balance`，见上一节）。**下一步：执行 npm 发布**，命令见上一条的「npm 发布操作手册」——本机尚未 `npm login`，这一步必须在自己终端里做（交互式授权在 DSH 会话里跑不了）。
+5. `git init` + 首次提交已完成，`main` 已推到 `github.com/quasimodoo/dsh-sidebar-balance`（含图标与改名提交）。后续 `gh` CLI 未安装，远端操作需在网页或用本机 git 完成。**发布 npm 后记得 `git tag v1.0.0 && git push origin v1.0.0`。**
 6. **旧的插件目录与旧 tarball 都可以删**：`<旧插件目录>` 已不再被任何地方引用；`C:/File/project/dstools/dsh-sidebar-balance-1.0.0.tgz` 在 profile 改成 `link:` 之后也不再被引用，可以删。如果迁移时把源码复制（而不是移动）到了新工作区，旧副本会连同原目录的权限一起被带过来，可能删不掉——那种情况下用管理员权限删除，或把会话切到完全权限后再处理。同理，**工作区根上的 `Everyone: Deny DeleteSubdirectoriesAndFiles` 会继承给子目录**，标准权限修复脚本按设计只补允许项、不动拒绝项。
 7. **本会话实测：DSH 沙箱禁止写入工作区的 `.git` 目录**（连 `git commit` 需要的 `.git/index.lock` 都建不了，`git status` 也会因读不到而报 `not a repository`）。同一轮里工作区根目录曾出现 `SetNamedSecurityInfoW failed (Win32 5): grantWrite` —— 即沙箱无法为工作区授予写入权限，此时连列目录都会失败；用随包提供的 Windows 权限诊断脚本修好根目录后，普通文件读写恢复，但 `.git` 依然被拒。**提权运行 `git add/commit` 是可行的绕过方式**，但不要把它当成常态。
+8. **网络实测（本机）**：`npm view` / `registry.npmjs.org` 可达（受限模式与提权模式都试过，`npm view dsh-plugin-sidebar-balance` 正常返回 404）；`api.github.com`（普通 HTTPS）在提权模式下可达，但**同一个 pnpm/npm 进程之外的 Git 流量被重置**——`git ls-remote origin` 报 `Recv failure: Connection was reset`，尽管远端用浏览器/网页访问一切正常。所以 **`git push` 与 `npm login` 这类交互式/长时间连接的操作，交给本机终端做最稳**。
 

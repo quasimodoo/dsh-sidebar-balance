@@ -2,6 +2,11 @@ node_modules/
 *.tgz
 *.log
 
+# pnpm content-addressable store, in case a local run keeps it inside the
+# project (--store-dir) instead of the user's global store.
+.pnpm-store/
+.tmp-*/
+
 # Legacy top-level copy of the package sources; the live sources are now the
 # repository root. Ignored so an old copy can never be committed by accident.
 /dsh-sidebar-balance/
