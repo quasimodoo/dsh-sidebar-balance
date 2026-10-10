@@ -14,9 +14,25 @@
 
 数据来自官方账号页所用的同一个 Application Remote，因此始终与 设置 → 账号与余额 一致。
 
-## 安装
+## 安装（不需要命令行）
 
-最可靠的渠道是 **tarball**：不需要 git、不需要 SSH key、不需要代理、也不需要 registry。
+1. 打开 [Releases 页面](https://github.com/quasimodoo/dsh-sidebar-balance/releases)，下载 `dsh-sidebar-balance-1.0.0.tgz`（约 16 KB）。
+2. 在 App 里打开 **侧边栏 →「插件」→「添加插件」**，填入刚下载文件的完整路径，例如 `C:\Users\<用户名>\Downloads\dsh-sidebar-balance-1.0.0.tgz`。
+3. **刷新页面**（Ctrl+R）。余额会出现在侧边栏底部、账号入口正上方。
+
+那个对话框里的 npm 源选择对本安装没有影响：本包没有任何依赖，不会从 registry 下载东西。
+
+以后升级：从新版本 Release 下载新的 `.tgz`，用同样方式安装即可覆盖旧版本。
+
+如果安装报 `EPERM: operation not permitted, rename`，说明旧的一份仍登记在 profile 里、且 App 占着该目录。先卸载旧条目，或**完全退出 App**（含托盘图标）后用命令行安装：
+
+```sh
+dsh plugin --profile desktop add "C:\Users\<用户名>\Downloads\dsh-sidebar-balance-1.0.0.tgz"
+```
+
+## 从源码安装（维护者）
+
+自己打包，或直接安装工作区：
 
 ```sh
 pnpm pack                                                              # 生成 dsh-sidebar-balance-1.0.0.tgz
@@ -42,14 +58,16 @@ profile 的 `link:` 路径请保持 ASCII。含 `×` 或中文目录名的路径
 
 | 渠道 | 用户的命令 | 状态 |
 |---|---|---|
-| Tarball（`pnpm pack`） | `dsh plugin --profile <名字> add ./dsh-sidebar-balance-1.0.0.tgz` | **已端到端验证。** 不碰 git、不碰 registry、不需要代理。文件约 15 KB，建议挂到 GitHub Release 上给用户一个直接下载链接。 |
-| Git 仓库 | `dsh plugin --profile <名字> add github:<用户>/<仓库>` | 已验证包能装上并激活。取决于用户的 git 网络与凭据：pnpm 可能用 SSH 解析远端（需要 key），也可能用 HTTPS（需要能连 443）。 |
+| Tarball（`pnpm pack`） | `dsh plugin --profile <名字> add ./dsh-sidebar-balance-1.0.0.tgz` | **已端到端验证，包括真的读出余额。** 不碰 git、不碰 registry、不需要代理、不需要 SSH key。这是推荐渠道：把文件挂到 GitHub Release 上，用户就有下载链接。 |
+| Git 仓库 | `dsh plugin --profile <名字> add github:<用户>/<仓库>` | 包能装上并激活。取决于用户的 git 网络与凭据：pnpm 可能用 SSH 解析远端（需要账号上有 key），也可能用 HTTPS（需要能连 443）。若网络屏蔽了 22 端口，简写会以 `Permission denied (publickey)` 失败——改用显式 `https://` 地址，或一次性加上这两条改写规则：`git config --global url."https://github.com/".insteadOf "git@github.com:"`，以及把 `git@github.com:` 换成 `ssh://git@github.com/` 的同样一条。 |
 | npm | `dsh plugin --profile <名字> add <包名>` | **卡在包名上。** `dsh-sidebar-balance` 在 npm 上已存在（`latest` 0.1.1，无关项目），要发布得换名或使用 scope，例如 `@<用户>/dsh-sidebar-balance`。 |
 
 为了让插件管理器能正确安装，本仓库遵守两条打包规则：
 
 - **包必须留在仓库根。** `dsh plugin add github:<用户>/<仓库>` 把仓库根当成依赖安装；早期把包放在 `packages/` 里，实测得到 `declares no dsh.bundle — installed as a plain dependency, not a profile layer`——也就是插件永远不会激活。
 - **Git 安装不需要构建授权。** 没有 `prepare`、没有构建产物，因此不需要 `allowBuilds` 条目。
+
+Tarball 安装可能报 `EPERM: operation not permitted, rename .../node_modules/<包名>`：那说明已经有一份登记在 profile 里、且 App 占着该目录。先卸载旧条目，或完全退出 App（含托盘图标）后用命令行安装。
 
 > 如果你 fork 了这个仓库，发布前请把 `package.json` 里的 `repository.url` 改成自己的地址。
 

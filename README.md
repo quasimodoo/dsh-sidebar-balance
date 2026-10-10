@@ -14,9 +14,25 @@ A [DeepSeek Harness](https://github.com/deepseek-ai/DeepSeek-Harness) plugin: sh
 
 The value comes from the same Application Remote the Account settings page uses, so it always matches 设置 → 账号与余额.
 
-## Install
+## Install (no command line needed)
 
-The most reliable channel is a **tarball**: it needs no git, no SSH key, no proxy and no registry access.
+1. Open the [Releases page](https://github.com/quasimodoo/dsh-sidebar-balance/releases) and download `dsh-sidebar-balance-1.0.0.tgz` (about 16 KB).
+2. In the app, open **侧边栏 →「插件」→「添加插件」** and enter the full path of the file you just downloaded, for example `C:\Users\<user>\Downloads\dsh-sidebar-balance-1.0.0.tgz`.
+3. **Reload the page** (Ctrl+R). The balance appears in the sidebar footer, directly above the account entry.
+
+The npm source selector in that dialog does not matter for this install: the package has no dependencies, so nothing is downloaded from a registry.
+
+To upgrade later, download the new `.tgz` from the newer release and install it the same way; the previous version is replaced.
+
+If the install fails with `EPERM: operation not permitted, rename`, a previous copy is still registered and the app is holding the folder. Uninstall the old entry first, or fully quit the app (including the tray icon) and install from the command line:
+
+```sh
+dsh plugin --profile desktop add "C:\Users\<user>\Downloads\dsh-sidebar-balance-1.0.0.tgz"
+```
+
+## Install from source (maintainers)
+
+Building the tarball yourself, or installing the checkout directly:
 
 ```sh
 pnpm pack                                                              # produces dsh-sidebar-balance-1.0.0.tgz
@@ -42,8 +58,8 @@ The profile's `link:` path should stay ASCII. A path containing characters such 
 
 | Channel | Command for the user | State |
 |---|---|---|
-| Tarball (`pnpm pack`) | `dsh plugin --profile <name> add ./dsh-sidebar-balance-1.0.0.tgz` | **Verified end to end.** No git, no registry, no proxy. The file is ~15 KB; attach it to a GitHub Release so users get a direct download link. |
-| Git repository | `dsh plugin --profile <name> add github:<user>/<repo>` | Verified that the package installs and activates. Depends on the user's git network and credentials: pnpm may resolve the GitHub remote over SSH (needs a key) or HTTPS (needs to reach 443). |
+| Tarball (`pnpm pack`) | `dsh plugin --profile <name> add ./dsh-sidebar-balance-1.0.0.tgz` | **Verified end to end, including reading a real balance.** No git, no registry, no proxy, no SSH key. This is the recommended channel; attach the file to a GitHub Release so users get a download link. |
+| Git repository | `dsh plugin --profile <name> add github:<user>/<repo>` | The package installs and activates. Depends on the user's git network and credentials: pnpm may resolve the GitHub remote over SSH (needs a key on the account) or over HTTPS (needs to reach port 443). On a network where port 22 is filtered, the shorthand fails with `Permission denied (publickey)`; use the explicit `https://` URL, or add these two rewrite rules once: `git config --global url."https://github.com/".insteadOf "git@github.com:"` and the same with `ssh://git@github.com/`. |
 | npm | `dsh plugin --profile <name> add <package-name>` | **Blocked on the name.** `dsh-sidebar-balance` already exists on npm (`latest` 0.1.1, unrelated project), so publishing needs a different name or a scope such as `@<user>/dsh-sidebar-balance`. |
 
 Two packaging rules this repository follows because of how the plugin manager installs things:
@@ -51,6 +67,7 @@ Two packaging rules this repository follows because of how the plugin manager in
 - **The package must stay at the repository root.** `dsh plugin add github:<user>/<repo>` installs the repository root as the dependency; with the package nested in `packages/`, the install produced `declares no dsh.bundle — installed as a plain dependency, not a profile layer`, i.e. the plugin never activates.
 - **A git install needs no build authorization.** There is no `prepare` script and no build output, so no `allowBuilds` entry is required.
 
+A tarball install can fail with `EPERM: operation not permitted, rename .../node_modules/<package>` when a copy of the plugin is already registered and the app has the folder open. Uninstall the old entry first, or quit the app completely (tray icon included) and install from the command line.
 
 > If you fork this repository, update `repository.url` in `package.json` before publishing.
 
